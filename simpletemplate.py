@@ -240,6 +240,7 @@ class ForNode(Node):
         s = ""
         for loopidx, i in enumerate(self.ctx.get(self.looplist)):
             self.ctx['loopidx'] = loopidx
+            self.ctx['parity'] = loopidx % 2
             self.ctx[self.loopvar] = i
             for k in self.kids:
                 s += k.render()
@@ -253,11 +254,12 @@ def parse_varnode(template, ctx):
     @param template str: template.
     @param ctx dict: execution environment.
     """
-    template = eat(template, "%% {{")
-    varname = read_until(template, "}} %%")
+    template = eat(template, "%%= ")
+    varname = read_until(template, " %%")# "extra space in template"
+    #print("{varname}".format(**locals()))
     node = VarNode(ctx, varname)
     template = eat(template, varname)
-    template = eat(template, "}} %%")
+    template = eat(template, " %%")
     return template, node
 
 
@@ -316,7 +318,7 @@ def parse_template(template, ctx):
         template = eat(template, txt)
         root.kids.append(CDATA)
         whatisnext = peek(template, 4)
-        if whatisnext == "%% {":
+        if whatisnext.startswith("%%= "):
             template, node = parse_varnode(template, ctx)
             root.kids.append(node)
         elif whatisnext == "%% i":  # if
@@ -333,3 +335,10 @@ def parse_template(template, ctx):
         CDATA = CDataNode(txt=txt, ctx=ctx)
         root.kids.append(CDATA)
     return root
+
+def parse_html(template, ctx, ishtml=False):
+    root = parse_template(template, ctx)
+    out = root.render()
+    if ishtml:
+        return out.replace("\n", "<br />")
+    return out
